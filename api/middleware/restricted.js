@@ -15,6 +15,9 @@ module.exports = (req, res, next) => {
   */
 	try {
 		const token = req.headers.authorization?.split(' ')[1];
+		// console.log('token =====> ', token);
+		// console.log('headers =====> ', req.headers);
+		// console.log('secret =====> ', secret.jwtSecret);
 
 		if (token) {
 			jwt.verify(
@@ -22,10 +25,9 @@ module.exports = (req, res, next) => {
 				secret.jwtSecret,
 				(err, decodedToken) => {
 					if (err) {
-						res.status(
-							401
-						).json({
-							message:
+						next({
+							apiCode: 401,
+							apiMessage:
 								'token invalid',
 						});
 					} else {
@@ -36,14 +38,14 @@ module.exports = (req, res, next) => {
 			);
 		} else {
 			next({
-				statusCode: 401,
-				message: 'token required',
+				apiCode: 401,
+				apiMessage: 'token required',
 			});
 		}
 	} catch (err) {
 		next({
-			statusCode: 500,
-			message: 'error validating credentials',
+			apiCode: 500,
+			apiMessage: 'error validating credentials',
 			...err,
 		});
 	}

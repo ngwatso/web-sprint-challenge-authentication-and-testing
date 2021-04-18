@@ -2,12 +2,19 @@ const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const secret = require('../secrets');
 const bcrypt = require('bcryptjs');
-const checkUsernameExists = require('../users/users-middleware');
+const {
+	checkPayload,
+	checkUsernameExists,
+} = require('../users/users-middleware');
 const Users = require('../users/users-model');
 
-router.post('/register', checkUsernameExists, async (req, res, next) => {
-	// res.end('implement register, please!');
-	/*
+router.post(
+	'/register',
+	checkPayload,
+	checkUsernameExists,
+	async (req, res, next) => {
+		// !! res.end('implement register, please!');
+		/*
     * IMPLEMENT
     * You are welcome to build additional middlewares to help with the endpoint's functionality.
     * DO NOT EXCEED 2^8 ROUNDS OF HASHING!
@@ -32,21 +39,31 @@ router.post('/register', checkUsernameExists, async (req, res, next) => {
     * 4- On FAILED registration due to the `username` being taken,
     *   the response body should include a string exactly as follows: "username taken".
   */
-	const credentials = req.body;
+		const credentials = req.body;
 
-	try {
-		const hash = bcrypt.hashSync(credentials.password, 8);
-		credentials.password = hash;
+		try {
+			const hash = bcrypt.hashSync(
+				credentials.password,
+				8
+			);
+			credentials.password = hash;
 
-		const user = await Users.add(credentials);
-		res.status(201).json(user);
-	} catch (err) {
-		next(err);
+			const user = await Users.add(credentials);
+			const token = generateToken(user);
+			res.status(201).json({ data: user, token });
+		} catch (err) {
+			console.log(err);
+			next({
+				apiCode: 500,
+				apiMessage: 'error saving new user',
+				...err,
+			});
+		}
 	}
-});
+);
 
-router.post('/login', async (req, res, next) => {
-	// res.end('implement login, please!');
+router.post('/login', checkPayload, async (req, res, next) => {
+	// !! res.end('implement login, please!');
 	/*
     * IMPLEMENT
     * You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -77,17 +94,21 @@ router.post('/login', async (req, res, next) => {
 		if (user && bcrypt.compareSync(password, user.password)) {
 			const token = generateToken(user);
 			res.status(200).json({
-				message: `Welcome back, ${user.username}!`,
-				token,
+				message: `welcome, ${user.username}`,
+				token: token,
 			});
 		} else {
 			next({
-				statusCode: 401,
-				message: 'invalid credentials',
+				apiCode: 401,
+				apiMessage: 'invalid credentials',
 			});
 		}
 	} catch (err) {
-		next(err);
+		next({
+			apiCode: 500,
+			apiMessage: 'error logging in',
+			...err,
+		});
 	}
 });
 
@@ -95,7 +116,6 @@ function generateToken(user) {
 	const payload = {
 		subject: user.id,
 		username: user.username,
-		password: user.password,
 	};
 	const options = {
 		expiresIn: '1 day',
